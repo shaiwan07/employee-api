@@ -10,8 +10,8 @@ const validate = require('../middlewares/validate.middleware');
 // PHP employee h&s form saves incident images to admin/hsupload/ (relative to employeesarea root).
 // DB stores the full relative path: admin/hsupload/filename.jpg
 // We save to the same directory so web-uploaded and mobile-uploaded images are identical.
-const incidentDir = path.join(process.env.UPLOADS_ROOT || './dev-files', 'admin', 'hsupload');
-if (!fs.existsSync(incidentDir)) fs.mkdirSync(incidentDir, { recursive: true });
+const incidentDir = path.join(process.env.UPLOADS_ROOT || path.join(__dirname, '..', '..', 'dev-files'), 'admin', 'hsupload');
+try { fs.mkdirSync(incidentDir, { recursive: true }); } catch (_) { /* directory may already exist or be managed by the server */ }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, incidentDir),

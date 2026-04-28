@@ -7,8 +7,8 @@ const { authenticate } = require('../middlewares/auth.middleware');
 
 // PHP stores employee photos in admin/employeephoto/ (relative to employeesarea root).
 // The DB stores the path without the 'admin/' prefix: employeephoto/filename.jpg
-const photoDir = path.join(process.env.UPLOADS_ROOT || './dev-files', 'admin', 'employeephoto');
-if (!fs.existsSync(photoDir)) fs.mkdirSync(photoDir, { recursive: true });
+const photoDir = path.join(process.env.UPLOADS_ROOT || path.join(__dirname, '..', '..', 'dev-files'), 'admin', 'employeephoto');
+try { fs.mkdirSync(photoDir, { recursive: true }); } catch (_) { /* directory may already exist or be managed by the server */ }
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, photoDir),
