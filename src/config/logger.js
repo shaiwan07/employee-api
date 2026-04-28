@@ -1,8 +1,6 @@
 const { createLogger, format, transports } = require('winston');
-const path = require('path');
-const fs = require('fs');
 
-const { combine, timestamp, printf, colorize, errors, json, splat } = format;
+const { combine, timestamp, printf, colorize, errors, splat } = format;
 
 const isDev = process.env.NODE_ENV !== 'production';
 
@@ -17,37 +15,9 @@ const consoleFormat = combine(
   })
 );
 
-const fileFormat = combine(timestamp(), errors({ stack: true }), splat(), json());
-
-const loggerTransports = [new transports.Console({ format: consoleFormat })];
-
-// File logging only in development — IIS/iisnode captures stdout in production
-if (isDev) {
-  require('winston-daily-rotate-file');
-  const logsDir = path.join(__dirname, '..', '..', 'logs');
-  try { fs.mkdirSync(logsDir, { recursive: true }); } catch (_) {}
-  loggerTransports.push(
-    new transports.DailyRotateFile({
-      filename: path.join(logsDir, 'error-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      level: 'error',
-      format: fileFormat,
-      maxFiles: '30d',
-      zippedArchive: true,
-    }),
-    new transports.DailyRotateFile({
-      filename: path.join(logsDir, 'combined-%DATE%.log'),
-      datePattern: 'YYYY-MM-DD',
-      format: fileFormat,
-      maxFiles: '14d',
-      zippedArchive: true,
-    })
-  );
-}
-
 const logger = createLogger({
   level: isDev ? 'debug' : 'info',
-  transports: loggerTransports,
+  transports: [new transports.Console({ format: consoleFormat })],
 });
 
 logger.stream = {
