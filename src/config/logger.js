@@ -1,5 +1,4 @@
 const { createLogger, format, transports } = require('winston');
-require('winston-daily-rotate-file');
 const path = require('path');
 const fs = require('fs');
 
@@ -7,10 +6,6 @@ const { combine, timestamp, printf, colorize, errors, json, splat } = format;
 
 const isDev = process.env.NODE_ENV !== 'production';
 
-const logsDir = path.join(__dirname, '..', '..', 'logs');
-try { fs.mkdirSync(logsDir, { recursive: true }); } catch (_) { /* ignore permission errors */ }
-
-// Human-readable format for console
 const consoleFormat = combine(
   colorize({ all: true }),
   timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
@@ -22,21 +17,16 @@ const consoleFormat = combine(
   })
 );
 
-// Structured JSON format for log files
-const fileFormat = combine(
-  timestamp(),
-  errors({ stack: true }),
-  splat(),
-  json()
-);
+const fileFormat = combine(timestamp(), errors({ stack: true }), splat(), json());
 
-const logger = createLogger({
-  level: isDev ? 'debug' : 'info',
-  transports: [
-    // Console — always on
-    new transports.Console({ format: consoleFormat }),
+const loggerTransports = [new transports.Console({ format: consoleFormat })];
 
-    // Rotating daily error log
+// File logging only in development — IIS/iisnode captures stdout in production
+if (isDev) {
+  require('winston-daily-rotate-file');
+  const logsDir = path.join(__dirname, '..', '..', 'logs');
+  try { fs.mkdirSync(logsDir, { recursive: true }); } catch (_) {}
+  loggerTransports.push(
     new transports.DailyRotateFile({
       filename: path.join(logsDir, 'error-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
@@ -45,19 +35,21 @@ const logger = createLogger({
       maxFiles: '30d',
       zippedArchive: true,
     }),
-
-    // Rotating daily combined log (all levels)
     new transports.DailyRotateFile({
       filename: path.join(logsDir, 'combined-%DATE%.log'),
       datePattern: 'YYYY-MM-DD',
       format: fileFormat,
       maxFiles: '14d',
       zippedArchive: true,
-    }),
-  ],
+    })
+  );
+}
+
+const logger = createLogger({
+  level: isDev ? 'debug' : 'info',
+  transports: loggerTransports,
 });
 
-// Morgan-compatible stream so HTTP logs go through Winston
 logger.stream = {
   write: (message) => logger.http(message.trim()),
 };
